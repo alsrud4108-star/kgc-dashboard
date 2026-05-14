@@ -14,7 +14,7 @@ st.set_page_config(
 # KGC 브랜드 아이덴티티를 위한 커스텀 CSS 적용
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@100;400;700;900&display=swap');
+    @import url('https://docs.google.com/spreadsheets/d/148Xv8z4aPfOZaQgWV40jOSNFPfsBKbCC857J8-4tqkk/edit?usp=sharing');
     
     html, body, [class*="css"] {
         font-family: 'Pretendard', sans-serif;
