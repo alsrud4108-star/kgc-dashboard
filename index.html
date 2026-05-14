@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KGC Brand Strategy Dashboard - Everytime Balance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@100;400;700;900&display=swap');
+        
+        :root {
+            --kgc-red: #E63946;
+            --kgc-navy: #1D3557;
+            --kgc-teal: #457B9D;
+            --kgc-bg: #F8FAFC;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--kgc-bg);
+            color: #334155;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .trend-up { color: #10B981; }
+        .trend-down { color: #EF4444; }
+
+        .sidebar {
+            background-color: var(--kgc-navy);
+            height: 100vh;
+        }
+
+        .nav-item {
+            color: #94A3B8;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            background-color: var(--kgc-red);
+            color: white;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+    </style>
+</head>
+<body class="flex overflow-hidden">
+
+    <aside class="sidebar w-64 hidden lg:flex flex-col p-6 space-y-8 flex-shrink-0">
+        <div class="flex items-center space-x-3 px-2">
+            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <i class="fas fa-chart-line text-red-600"></i>
+            </div>
+            <span class="text-white font-bold text-xl tracking-tight">KGC Insight</span>
+        </div>
+        
+        <nav class="flex-1 space-y-2">
+            <div class="nav-item active"><i class="fas fa-home mr-3"></i>대시보드 홈</div>
+            <div class="nav-item"><i class="fas fa-shopping-cart mr-3"></i>판매 분석</div>
+            <div class="nav-item"><i class="fas fa-users mr-3"></i>고객 통찰</div>
+            <div class="nav-item"><i class="fas fa-bullhorn mr-3"></i>캠페인 현황</div>
+            <div class="nav-item"><i class="fas fa-cog mr-3"></i>설정</div>
+        </nav>
+
+        <div class="bg-navy-800 p-4 rounded-xl text-xs text-slate-400 leading-relaxed border border-slate-700">
+            <p class="font-bold text-white mb-2">팀장 Note:</p>
+            "리뉴얼 초기 지표가 매우 고무적입니다. 특히 편의점 채널의 2030 유입은 브랜드 영타겟팅 전략이 유효함을 증명합니다."
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto h-screen p-4 md:p-8">
+        
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 uppercase">Weekly Performance</h1>
+                <p class="text-slate-500 font-medium text-lg">에브리타임 밸런스 리뉴얼 | 2026.03.W4</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex flex-col items-end mr-4">
+                    <span class="text-xs text-slate-400">마지막 업데이트</span>
+                    <span class="text-sm font-bold text-slate-600">2026.03.31 09:00</span>
+                </div>
+                <button class="bg-white p-3 rounded-xl border border-slate-200 hover:bg-slate-50 shadow-sm transition-all">
+                    <i class="fas fa-sync-alt text-slate-400"></i>
+                </button>
+                <button class="bg-red-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i> 리포트 다운로드
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Metropolitan Growth -->
+            <div class="dashboard-card border-l-4 border-l-red-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">수도권 성장률</span>
+                    <i class="fas fa-city text-slate-300"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-3xl font-black text-slate-800">+15.0%</span>
+                    <span class="text-xs font-bold trend-up"><i class="fas fa-caret-up"></i> 주간 최고</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">편의점 채널 프로모션 영향</p>
+            </div>
+
+            <!-- Target Demographic -->
+            <div class="dashboard-card border-l-4 border-l-blue-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">2030 타겟 비중</span>
+                    <i class="fas fa-user-check text-slate-300"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-3xl font-black text-slate-800">45.0%</span>
+                    <span class="text-xs font-bold text-blue-500 underline">전략 타겟 집중</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">전체 구매자 중 사회초년생 비율</p>
+            </div>
+
+            <!-- Keyword Increase -->
+            <div class="dashboard-card border-l-4 border-l-orange-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">스포츠 키워드</span>
+                    <i class="fas fa-running text-slate-300"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-3xl font-black text-slate-800">+30.0%</span>
+                    <span class="text-xs font-bold text-orange-500">TPO 확장중</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">등산/테니스 연관 언급량</p>
+            </div>
+
+            <!-- Rating -->
+            <div class="dashboard-card border-l-4 border-l-yellow-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">제품 만족도</span>
+                    <i class="fas fa-star text-slate-300"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-3xl font-black text-slate-800">4.2/5</span>
+                    <span class="text-xs font-bold trend-down"><i class="fas fa-exclamation-circle"></i> UX 이슈</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">500건 리뷰 정교 분석 결과</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Regional Performance -->
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">지역별 채널 성과 분석</h3>
+                        <p class="text-xs text-slate-500">수도권(편의점) vs 지방(대형마트) 증감률</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <span class="flex items-center text-[10px] font-bold text-slate-400"><span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>상승</span>
+                        <span class="flex items-center text-[10px] font-bold text-slate-400"><span class="w-2 h-2 bg-navy-900 rounded-full mr-1"></span>하락</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="regionalChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Demographic Breakdown -->
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">구매 고객층 세부 구성</h3>
+                        <p class="text-xs text-slate-500">2030 사회초년생의 압도적 비중 확인</p>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="ageDonutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Customer Sentiment Radar -->
+            <div class="dashboard-card lg:col-span-1">
+                <h3 class="text-lg font-bold text-slate-800 mb-6">리뉴얼 제품 속성 평가</h3>
+                <div class="chart-wrapper" style="height: 250px;">
+                    <canvas id="sentimentRadarChart"></canvas>
+                </div>
+                <div class="mt-6 space-y-3">
+                    <div class="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                        <span class="text-xs font-bold text-green-700">강점: 패키지/쓴맛완화</span>
+                        <i class="fas fa-plus-circle text-green-500"></i>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                        <span class="text-xs font-bold text-red-700">약점: 가격/개봉편의성</span>
+                        <i class="fas fa-minus-circle text-red-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TPO Bubble Chart -->
+            <div class="dashboard-card lg:col-span-2">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">취식 상황(TPO) 연관어 분석</h3>
+                        <p class="text-xs text-slate-500">아웃도어 활동 키워드의 급격한 성장세 포착</p>
+                    </div>
+                    <div class="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+                        Active Trend
+                    </div>
+                </div>
+                <div id="tpoBubbleChart" style="height: 320px; width: 100%;"></div>
+            </div>
+        </div>
+
+        <div class="mt-8 dashboard-card overflow-hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-slate-800">차주 전략 실행 과제 (Action Items)</h3>
+                <span class="text-xs text-slate-400 font-medium underline cursor-pointer">전체 보기</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[10px] uppercase text-slate-400 border-b font-black tracking-widest">
+                            <th class="pb-4 px-2">전략 카테고리</th>
+                            <th class="pb-4">세부 과제</th>
+                            <th class="pb-4">우선순위</th>
+                            <th class="pb-4">담당</th>
+                            <th class="pb-4">기한</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr class="border-b hover:bg-slate-50 transition-colors">
+                            <td class="py-4 px-2">
+                                <span class="bg-orange-100 text-orange-600 px-2 py-1 rounded text-[10px] font-black">MARKETING</span>
+                            </td>
+                            <td class="py-4">
+                                <div class="font-bold text-slate-700 font-bold">등산/테니스 크루 샘플링 지원</div>
+                                <div class="text-[11px] text-slate-400">TPO 확장을 위한 액티비티 마케팅 강화</div>
+                            </td>
+                            <td class="py-4"><span class="text-red-500 font-black text-xs">P1</span></td>
+                            <td class="py-4 text-slate-500 text-xs">브랜드팀</td>
+                            <td class="py-4 text-slate-500 text-xs">04.05</td>
+                        </tr>
+                        <tr class="border-b hover:bg-slate-50 transition-colors">
+                            <td class="py-4 px-2">
+                                <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-[10px] font-black">SALES</span>
+                            </td>
+                            <td class="py-4">
+                                <div class="font-bold text-slate-700 font-bold">지방 대형마트 프로모션 재설계</div>
+                                <div class="text-[11px] text-slate-400">정체 구간 타개를 위한 기획팩(증정) 구성</div>
+                            </td>
+                            <td class="py-4"><span class="text-orange-500 font-black text-xs">P1</span></td>
+                            <td class="py-4 text-slate-500 text-xs">영업본부</td>
+                            <td class="py-4 text-slate-500 text-xs">04.07</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-4 px-2">
+                                <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-black">QC/UX</span>
+                            </td>
+                            <td class="py-4">
+                                <div class="font-bold text-slate-700 font-bold">패키지 개봉 프로세스 정밀 점검</div>
+                                <div class="text-[11px] text-slate-400">개봉 뻑뻑함 이슈 관련 금형 보완 검토</div>
+                            </td>
+                            <td class="py-4"><span class="text-slate-400 font-black text-xs">P2</span></td>
+                            <td class="py-4 text-slate-500 text-xs">생산팀</td>
+                            <td class="py-4 text-slate-500 text-xs">04.10</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="mt-12 mb-8 text-center text-slate-400 text-[10px] font-medium tracking-widest uppercase">
+            &copy; 2026 KGC Ginseng Corp. Brand Strategy Internal Use Only.
+        </footer>
+    </main>
+
+    <script>
+        // Global Chart Defaults
+        Chart.defaults.font.family = "'Pretendard', sans-serif";
+        Chart.defaults.color = "#94A3B8";
+
+        window.onload = function() {
+            initRegionalChart();
+            initAgeChart();
+            initSentimentRadar();
+            initTpoBubbleChart();
+        };
+
+        // 1. Regional Sales Performance (Bar Chart)
+        function initRegionalChart() {
+            const ctx = document.getElementById('regionalChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['수도권 (편의점 중심)', '지방 (대형마트 중심)'],
+                    datasets: [{
+                        label: '전주 대비 판매량 증감 (%)',
+                        data: [15, -2],
+                        backgroundColor: ['#E63946', '#1D3557'],
+                        borderRadius: 12,
+                        barThickness: 45
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1D3557',
+                            padding: 12,
+                            titleFont: { size: 14, weight: '900' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#F1F5F9', drawBorder: false },
+                            ticks: { callback: v => v + '%' }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // 2. Demographic Breakdown (Donut Chart)
+        function initAgeChart() {
+            const ctx = document.getElementById('ageDonutChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['2030 사회초년생', '4050 중장년층', '기타'],
+                    datasets: [{
+                        data: [45, 40, 15],
+                        backgroundColor: ['#E63946', '#457B9D', '#CBD5E1'],
+                        borderWidth: 0,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 25,
+                                font: { size: 12, weight: '700' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Sentiment Radar Chart
+        function initSentimentRadar() {
+            const ctx = document.getElementById('sentimentRadarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['패키지 디자인', '맛(쓴맛완화)', '가격 합리성', '개봉 편의성', '휴대성'],
+                    datasets: [{
+                        label: '고객 만족도',
+                        data: [4.8, 4.5, 3.2, 2.8, 4.7],
+                        backgroundColor: 'rgba(230, 57, 70, 0.15)',
+                        borderColor: '#E63946',
+                        pointBackgroundColor: '#E63946',
+                        pointBorderColor: '#fff',
+                        pointRadius: 4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 5,
+                            ticks: { display: false, stepSize: 1 },
+                            grid: { color: '#F1F5F9' },
+                            angleLines: { color: '#F1F5F9' },
+                            pointLabels: { font: { size: 10, weight: '700' } }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // 4. TPO Bubble Chart (Plotly)
+        function initTpoBubbleChart() {
+            const data = [{
+                x: [10, 25, 40, 55, 70, 85],
+                y: [50, 75, 40, 85, 60, 45],
+                text: ['오피스', '테니스', '등산', '골프', '피크닉', '선물'],
+                mode: 'markers+text',
+                textposition: 'top center',
+                textfont: { family: 'Pretendard', size: 11, weight: '900' },
+                marker: {
+                    size: [50, 90, 85, 55, 65, 45],
+                    color: ['#CBD5E1', '#E63946', '#E63946', '#457B9D', '#457B9D', '#94A3B8'],
+                    opacity: 0.8,
+                    line: { color: 'white', width: 2 }
+                }
+            }];
+
+            const layout = {
+                xaxis: { showgrid: false, zeroline: false, showticklabels: false, range: [0, 100] },
+                yaxis: { showgrid: false, zeroline: false, showticklabels: false, range: [20, 100] },
+                margin: { t: 0, b: 0, l: 0, r: 0 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('tpoBubbleChart', data, layout, {
+                responsive: true,
+                displayModeBar: false
+            });
+        }
+    </script>
+</body>
+</html>
