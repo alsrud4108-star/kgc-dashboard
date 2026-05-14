@@ -1,169 +1,122 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
 
-# 페이지 기본 설정
-st.set_page_config(
-    page_title="KGC Insight - Everytime Balance",
-    page_icon="🔴",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 1. 페이지 기본 설정
+st.set_page_config(page_title="KGC 브랜드전략실 - 대시보드", layout="wide")
 
-# KGC 브랜드 아이덴티티를 위한 커스텀 CSS 적용
+# --- [데이터 로드 섹션] ---
+# 사용자님의 시트 ID와 각 탭의 gid 번호입니다.
+SHEET_ID = "148Xv8z4aPfOZaQgWV40jOSNFPfsBKbCC857J8-4tqkk"
+
+KPI_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
+REGION_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1330935199"
+AGE_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=547463562"
+
+@st.cache_data(ttl=60)  # 1분간 캐시 유지
+def load_data(url):
+    return pd.read_csv(url)
+
+try:
+    # 1. KPI 데이터 로드 (A7 셀의 요약 내용이 포함된 시트)
+    df_kpi_raw = load_data(KPI_URL)
+    
+    # 2. 기타 차트 데이터 로드
+    df_region = load_data(REGION_URL)
+    df_age = load_data(AGE_URL)
+
+    # 💡 [핵심 수정] A7 셀의 요약 내용 추출하기
+    # 판다스에서 첫 행은 헤더로 처리되므로:
+    # Row 2 = index 0, Row 3 = index 1 ... Row 7(A7) = index 5 입니다.
+    # 열(column)은 첫 번째인 A열(index 0)을 선택합니다.
+    ai_summary = df_kpi_raw.iloc[5, 0] if len(df_kpi_raw) >= 6 else "요약 데이터를 생성 중입니다..."
+
+    # 3. KPI 카드용 데이터만 분리 (1행~4행까지의 데이터만 사용)
+    df_kpi = df_kpi_raw.head(4)
+
+except Exception as e:
+    st.error(f"⚠️ 데이터를 불러올 수 없습니다. 시트 설정을 확인해주세요. ({e})")
+    st.stop()
+# -----------------------
+
+# 2. 커스텀 CSS
 st.markdown("""
     <style>
-    @import url('https://docs.google.com/spreadsheets/d/148Xv8z4aPfOZaQgWV40jOSNFPfsBKbCC857J8-4tqkk/edit?usp=sharing');
-    
-    html, body, [class*="css"] {
-        font-family: 'Pretendard', sans-serif;
-    }
-    
-    .main {
-        background-color: #F8FAFC;
-    }
-    
-    .stMetric {
-        background-color: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        border-left: 5px solid #E63946;
-    }
-    
-    .report-card {
-        background-color: white;
-        padding: 25px;
-        border-radius: 20px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
-    }
+    .kpi-value { font-size: 28px; font-weight: bold; color: #A6192E; }
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# 사이드바 구성
-with st.sidebar:
-    st.title("🔴 KGC Insight")
-    st.markdown("---")
-    st.selectbox("메뉴 선택", ["대시보드 홈", "판매 분석", "고객 통찰", "캠페인 현황"])
-    
-    st.info("""
-    **팀장 Note:**
-    리뉴얼 초기 지표가 매우 고무적입니다. 특히 편의점 채널의 2030 유입은 브랜드 영타겟팅 전략이 유효함을 증명합니다.
-    """)
-    
-    st.markdown("---")
-    st.caption("마지막 업데이트: 2026.03.31 09:00")
-
-# 메인 헤더
-st.title("🚀 Weekly Performance")
-st.subheader("에브리타임 밸런스 리뉴얼 | 2026.03.W4")
-
-# KPI 4개 컬럼 배치
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.metric(label="수도권 성장률", value="+15.0%", delta="주간 최고", delta_color="normal")
-with col2:
-    st.metric(label="2030 타겟 비중", value="45.0%", delta="전략 타겟 집중", delta_color="off")
-with col3:
-    st.metric(label="스포츠 키워드", value="+30.0%", delta="TPO 확장중", delta_color="normal")
-with col4:
-    st.metric(label="제품 만족도", value="4.2 / 5", delta="-0.3 (UX 이슈)", delta_color="inverse")
+# 3. 헤더 영역
+col_header1, col_header2 = st.columns([3, 1])
+with col_header1:
+    st.title("📈 에브리타임 밸런스 마케팅 대시보드")
+    st.markdown("**2026년 3월 4주차 | 리뉴얼 제품 판매 현황 분석**")
+with col_header2:
+    st.write("") 
+    st.info("👤 **팀장: 인선미** (Brand Strategy)")
 
 st.markdown("---")
 
-# 차트 레이아웃 구성
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    st.markdown("### 📍 지역별 채널 성과 분석")
-    fig_region = go.Figure(data=[
-        go.Bar(
-            x=['수도권 (편의점)', '지방 (대형마트)'],
-            y=[15, -2],
-            marker_color=['#E63946', '#1D3557'],
-            text=['+15%', '-2%'],
-            textposition='auto',
-        )
-    ])
-    fig_region.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        height=350,
-        margin=dict(l=20, r=20, t=20, b=20)
+# 4. KPI 카드 영역 (상위 4개 지표만 표시)
+kpi_cols = st.columns(len(df_kpi))
+for i, col in enumerate(kpi_cols):
+    d_color = "off" if i in [1, 3] else "normal"
+    col.metric(
+        label=df_kpi.iloc[i]['label'], 
+        value=df_kpi.iloc[i]['value'], 
+        delta=df_kpi.iloc[i]['delta'],
+        delta_color=d_color
     )
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 5. 차트 영역
+chart_col1, chart_col2 = st.columns(2)
+with chart_col1:
+    st.subheader("지역별 판매 성장률 (%)")
+    fig_region = px.bar(
+        df_region, x="지역", y="성장률", text="성장률", 
+        color="지역", color_discrete_sequence=['#A6192E', '#94a3b8']
+    )
+    fig_region.update_layout(showlegend=False, margin=dict(t=20, b=20, l=0, r=0))
     st.plotly_chart(fig_region, use_container_width=True)
 
 with chart_col2:
-    st.markdown("### 👥 구매 고객층 세부 구성")
-    labels = ['2030 사회초년생', '4050 중장년층', '기타']
-    values = [45, 40, 15]
-    fig_age = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6, marker_colors=['#E63946', '#457B9D', '#CBD5E1'])])
-    fig_age.update_layout(
-        showlegend=True,
-        height=350,
-        margin=dict(l=20, r=20, t=20, b=20)
+    st.subheader("소비자 연령대 분포")
+    fig_age = px.pie(
+        df_age, values="비중", names="연령대", hole=0.5,
+        color_discrete_sequence=['#A6192E', '#C5A059', '#cbd5e1']
     )
+    fig_age.update_layout(margin=dict(t=20, b=20, l=0, r=0), legend=dict(orientation="h", y=-0.1))
     st.plotly_chart(fig_age, use_container_width=True)
 
-detail_col1, detail_col2 = st.columns([1, 2])
+st.markdown("<br>", unsafe_allow_html=True)
 
-with detail_col1:
-    st.markdown("### ✨ 리뉴얼 제품 속성 평가")
-    categories = ['디자인', '맛(쓴맛완화)', '가격 합리성', '개봉 편의성', '휴대성']
-    fig_radar = go.Figure(data=go.Scatterpolar(
-        r=[4.8, 4.5, 3.2, 2.8, 4.7],
-        theta=categories,
-        fill='toself',
-        line_color='#E63946'
-    ))
-    fig_radar.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 5])),
-        showlegend=False,
-        height=300,
-        margin=dict(l=40, r=40, t=40, b=40)
-    )
-    st.plotly_chart(fig_radar, use_container_width=True)
-    st.warning("약점: 가격 및 개봉 편의성 보완 필요")
+# 6. 피드백 및 인사이트
+bottom_col1, bottom_col2 = st.columns([2, 1])
+with bottom_col1:
+    st.subheader("💬 실시간 고객 VOC 분석")
+    voc1, voc2 = st.columns(2)
+    with voc1:
+        st.success("**🟢 Positive**\n\n- 포장이 세련되어 선물용으로 최고입니다.\n- 기존 홍삼보다 쓴맛이 덜해서 먹기 편해요.")
+    with voc2:
+        st.error("**🔴 Improvement**\n\n- 리뉴얼 후 가격이 조금 오른 것 같아요.\n- **박스 개봉 시 가끔 뻑뻑함이 느껴집니다.**")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("💡 팀장 전략 제언 (Action Items)")
+    st.info("""
+    1. **아웃도어 마케팅:** 테니스/등산 커뮤니티 연계 '오운완' 캠페인 즉시 실행
+    2. **채널 최적화:** 지방권 대형마트 '가족 건강 키트' 번들 기획 구성
+    3. **품질 개선:** 패키지 개봉 편의성(Easy-off) 관련 생산 파트 피드백 전달
+    """)
 
-with detail_col2:
-    st.markdown("### 🏕️ 취식 상황(TPO) 연관어 분석")
-    tpo_data = pd.DataFrame({
-        '키워드': ['오피스', '테니스', '등산', '골프', '피크닉', '선물'],
-        '언급량': [50, 90, 85, 55, 65, 45],
-        '성장세': [10, 40, 35, 15, 20, 5],
-        '컬러': ['#CBD5E1', '#E63946', '#E63946', '#457B9D', '#457B9D', '#94A3B8']
-    })
-    fig_bubble = px.scatter(
-        tpo_data, x="언급량", y="성장세",
-        size="언급량", color="키워드",
-        hover_name="키워드", size_max=60,
-        color_discrete_sequence=['#E63946', '#457B9D', '#1D3557', '#CBD5E1', '#94A3B8', '#F4A261']
-    )
-    fig_bubble.update_layout(height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_bubble, use_container_width=True)
-
-# 실행 과제 테이블
-st.markdown("---")
-st.markdown("### 📋 차주 전략 실행 과제 (Action Items)")
-action_data = {
-    "전략 카테고리": ["MARKETING", "SALES", "QC/UX"],
-    "세부 과제": [
-        "등산/테니스 크루 샘플링 지원",
-        "지방 대형마트 프로모션 재설계",
-        "패키지 개봉 프로세스 정밀 점검"
-    ],
-    "우선순위": ["P1 (매우높음)", "P1 (높음)", "P2 (보통)"],
-    "담당": ["브랜드팀", "영업본부", "생산팀"],
-    "기한": ["04.05", "04.07", "04.10"]
-}
-st.table(pd.DataFrame(action_data))
-
-st.markdown(
-    "<br><hr><center style='color: #94A3B8; font-size: 0.8rem;'>"
-    "&copy; 2026 KGC Ginseng Corp. Brand Strategy Internal Use Only."
-    "</center>", 
-    unsafe_allow_html=True
-)
+with bottom_col2:
+    st.subheader("🔥 트렌드 키워드")
+    st.markdown("`#사회초년생` `#테니스` `#오운완` `#선물추천` `#등산` `#에너지부스터`")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("##### 📌 Today's Summary")
+    # 💡 [결과 반영] 구글 시트 A7 셀의 AI 요약 내용을 표시합니다.
+    st.info(ai_summary)
+    st.caption("※ 구글 시트의 마케팅 데이터를 Gemini AI가 실시간 분석한 결과입니다.")
