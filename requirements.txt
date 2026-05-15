@@ -1,4 +1,6 @@
-plotly
+streamlit
 pandas
-st-gsheets-connection
-koreanize_matplotlib
+numpy
+matplotlib
+scikit-learn
+setuptools
