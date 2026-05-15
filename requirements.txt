@@ -1,3 +1,4 @@
 plotly
 pandas
 st-gsheets-connection
+koreanize_matplotlib
