@@ -1,124 +1,64 @@
-import warnings
-from pathlib import Path
-
-import koreanize_matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
+import streamlit as st
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
-from sklearn.model_selection import train_test_split
+import numpy as np
+import time
+import plotly.graph_objects as go
 
-warnings.filterwarnings("ignore")
-plt.style.use("ggplot")
-pd.set_option("display.max_columns", None)
+# 1. 초기 설정 및 데이터 로드
+st.set_page_config(page_title="공정 실시간 모니터링", layout="wide")
+df_full = pd.read_csv('manufacturing_process_data.csv')
 
+# 정상 데이터 기준 관리 한계선 설정 (UCL, LCL)
+normal_mu = 10.02
+normal_sigma = 0.80
+ucl = normal_mu + 3 * normal_sigma
+lcl = normal_mu - 3 * normal_sigma
 
-def load_and_preprocess_data(data_path):
-    """
-    데이터를 로드하고 전처리합니다.
-    - timestamp 컬럼을 datetime으로 변환합니다.
-    - measure_deviation과 spec_margin 컬럼을 계산합니다.
-    """
-    df = pd.read_csv(data_path)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["measure_deviation"] = df["measure_value"] - (df["lsl"] + df["usl"]) / 2
-    df["spec_margin"] = np.minimum(df["measure_value"] - df["lsl"], df["usl"] - df["measure_value"])
-    return df
+st.title("🏭 실시간 제조 공정 관리 대시보드")
 
+# 2. 대시보드 레이아웃 구성
+col1, col2, col3 = st.columns(3)
+kpi_rate = col1.empty()
+kpi_count = col2.empty()
+kpi_status = col3.empty()
 
-def calculate_cpk(df):
-    """
-    주어진 DataFrame에서 품목별 Cpk를 계산합니다.
-    """
-    def calc_cpk_single_group(group):
-        mean = group["measure_value"].mean()
-        std = group["measure_value"].std()
-        usl = group["usl"].iloc[0]
-        lsl = group["lsl"].iloc[0]
-        # Handle case where std is zero to avoid division by zero
-        if std == 0:
-            return 0.0 # Or np.inf if you prefer to indicate perfect process (no variation)
-        cpu = (usl - mean) / (3 * std)
-        cpl = (mean - lsl) / (3 * std)
-        return round(min(cpu, cpl), 3)
+chart_placeholder = st.empty()
+alert_placeholder = st.container()
 
-    cpk_df = df.groupby("product_type").apply(calc_cpk_single_group).reset_index(name="cpk").sort_values("cpk")
-    return cpk_df
+# 3. 실시간 루프 시작
+if st.button('모니터링 시작'):
+    display_df = pd.DataFrame()
+    
+    for i in range(len(df_full)):
+        # 데이터가 하나씩 추가되는 시뮬레이션
+        new_row = df_full.iloc[[i]]
+        display_df = pd.concat([display_df, new_row]).iloc[-50:] # 최근 50개만 유지
+        
+        # 지표 계산
+        current_val = new_row['Measurement'].values[0]
+        total_defects = (display_df['Status_Label'] == 'Abnormal').sum()
+        defect_rate = (total_defects / len(display_df)) * 100
+        
+        # 상단 지표 업데이트
+        kpi_rate.metric("최근 불량률", f"{defect_rate:.1f}%")
+        kpi_count.metric("현재 측정값", f"{current_val:.2f}")
+        
+        # 조기 경보 로직
+        if current_val > ucl or current_val < lcl:
+            kpi_status.error("⚠️ 이상 탐지")
+            with alert_placeholder:
+                st.warning(f"🚨 [Batch {new_row['Batch_ID'].values[0]}] 관리 한계 이탈 발생! 측정치: {current_val:.2f}")
+        else:
+            kpi_status.success("✅ 정상 작동 중")
 
-
-def generate_control_chart_data(df, target_product):
-    """
-    특정 품목의 관리도 시각화에 필요한 데이터를 준비합니다.
-    측정값, 평균, UCL, LCL을 포함하는 DataFrame을 반환합니다.
-    """
-    chart_df = df.loc[df["product_type"] == target_product].sort_values("timestamp").copy()
-
-    mean_value = chart_df["measure_value"].mean()
-    std_value = chart_df["measure_value"].std()
-    ucl = mean_value + 3 * std_value
-    lcl = mean_value - 3 * std_value
-
-    # Prepare data for plotting
-    control_chart_data = pd.DataFrame({
-        "timestamp": chart_df["timestamp"],
-        "measure_value": chart_df["measure_value"],
-        "mean_value": mean_value,
-        "ucl": ucl,
-        "lcl": lcl
-    })
-    return control_chart_data
-
-
-def summarize_warning_and_process_vars(df):
-    """
-    품목별 경고 비율과 주요 공정 변수(온도, 압력, 습도)의 평균을 요약합니다.
-    """
-    warning_summary = (
-        df.groupby("product_type", as_index=False)
-        .agg(
-            warning_ratio=("warning_flag", "mean"),
-            avg_temp=("temperature_c", "mean"),
-            avg_pressure=("pressure_bar", "mean"),
-            avg_humidity=("humidity_pct", "mean"),
-        )
-    )
-    warning_summary["warning_ratio"] = (warning_summary["warning_ratio"] * 100).round(2)
-    return warning_summary
-
-
-def train_early_warning_model(df, model_cols, target_col):
-    """
-    조기 경보 모델(RandomForestClassifier)을 학습시키고 학습된 모델 객체를 반환합니다.
-    """
-    X = df[model_cols]
-    y = df[target_col]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42, stratify=y
-    )
-
-    warning_model = RandomForestClassifier(
-        random_state=42,
-        n_estimators=150,
-        max_depth=5,
-        min_samples_leaf=3,
-    )
-    warning_model.fit(X_train, y_train)
-
-    # Return the trained model and test sets for later evaluation
-    return warning_model, X_test, y_test
-
-
-def predict_top_risk_lots(model, df, model_cols, n_top_lots=10):
-    """
-    학습된 모델을 사용하여 각 lot의 경고 확률을 예측하고, 경고 확률이 높은 상위 N개 lot을 반환합니다.
-    """
-    risk_table = df.copy()
-    risk_table["warning_probability"] = model.predict_proba(df[model_cols])[:, 1]
-    top_risk_lots = (
-        risk_table.sort_values("warning_probability", ascending=False)
-        .loc[:, ["timestamp", "product_type", "lot_id", "measure_value", "warning_flag", "warning_probability"]]
-        .head(n_top_lots)
-    )
-    return top_risk_lots
+        # 관리도 그래프 업데이트 (Plotly)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=display_df['Measurement'], mode='lines+markers', name='측정치'))
+        fig.add_hline(y=ucl, line_dash="dash", line_color="red", annotation_text="UCL")
+        fig.add_hline(y=lcl, line_dash="dash", line_color="red", annotation_text="LCL")
+        fig.add_hline(y=normal_mu, line_color="green", annotation_text="Target")
+        
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20))
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+        
+        time.sleep(0.5) # 0.5초 간격으로 갱신
