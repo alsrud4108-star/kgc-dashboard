@@ -1,3 +1,4 @@
+!pip install koreanize-matplotlib
 import warnings
 from pathlib import Path
 
