@@ -1,20 +1,21 @@
 <!DOCTYPE html>
-import warnings
-from pathlib import Path
-
-import koreanize_matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
+import streamlit as st
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import koreanize_matplotlib
+from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
-warnings.filterwarnings("ignore")
-plt.style.use("ggplot")
-pd.set_option("display.max_columns", None)
+# Apply Korean font to matplotlib
+koreanize_matplotlib.use()
 
+# Suppress warnings for cleaner output in Streamlit
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
+# --- Re-define functions from the original notebook --- #
+# These functions are necessary for the Streamlit app to run independently
 def load_and_preprocess_data(data_path):
     """
     데이터를 로드하고 전처리합니다.
@@ -37,9 +38,8 @@ def calculate_cpk(df):
         std = group["measure_value"].std()
         usl = group["usl"].iloc[0]
         lsl = group["lsl"].iloc[0]
-        # Handle case where std is zero to avoid division by zero
         if std == 0:
-            return 0.0 # Or np.inf if you prefer to indicate perfect process (no variation)
+            return 0.0
         cpu = (usl - mean) / (3 * std)
         cpl = (mean - lsl) / (3 * std)
         return round(min(cpu, cpl), 3)
@@ -60,7 +60,6 @@ def generate_control_chart_data(df, target_product):
     ucl = mean_value + 3 * std_value
     lcl = mean_value - 3 * std_value
 
-    # Prepare data for plotting
     control_chart_data = pd.DataFrame({
         "timestamp": chart_df["timestamp"],
         "measure_value": chart_df["measure_value"],
@@ -106,8 +105,6 @@ def train_early_warning_model(df, model_cols, target_col):
         min_samples_leaf=3,
     )
     warning_model.fit(X_train, y_train)
-
-    # Return the trained model and test sets for later evaluation
     return warning_model, X_test, y_test
 
 
@@ -123,3 +120,70 @@ def predict_top_risk_lots(model, df, model_cols, n_top_lots=10):
         .head(n_top_lots)
     )
     return top_risk_lots
+
+
+def predict_new_samples(model, new_samples_df, model_cols):
+    """
+    새로운 샘플에 대해 경고 예측을 수행하고 확률을 계산합니다.
+    """
+    samples_copy = new_samples_df.copy()
+    samples_copy["pred_warning"] = model.predict(samples_copy[model_cols])
+    samples_copy["warning_probability"] = model.predict_proba(samples_copy[model_cols])[:, 1]
+    return samples_copy
+
+
+# --- Streamlit App --- #
+st.title("🏭 제조 품질 SPC 대시보드")
+
+# Sidebar for file upload
+st.sidebar.header("데이터 업로드")
+uploaded_file = st.sidebar.file_uploader("CSV 파일을 업로드하세요", type=["csv"])
+
+if uploaded_file is not None:
+    # Use uploaded file
+    spc_df = load_and_preprocess_data(uploaded_file)
+    st.sidebar.success("파일이 성공적으로 업로드되었습니다.")
+else:
+    # Fallback to default data path
+    candidate_paths = [
+        Path("/content/SPC 통계분석/quality_process_spc.csv"),
+        Path("../data/quality/quality_process_spc.csv"),
+        Path("../../data/quality/quality_process_spc.csv"),
+    ]
+
+    data_path = None
+    for path in candidate_paths:
+        if path.exists():
+            data_path = path
+            break
+
+    if data_path is None:
+        st.error("기본 'quality_process_spc.csv' 파일을 찾을 수 없습니다. 파일을 업로드하거나 경로를 확인하세요.")
+        st.stop()
+    else:
+        spc_df = load_and_preprocess_data(data_path)
+        st.sidebar.info("업로드된 파일이 없어 기본 데이터를 사용합니다.")
+
+# Display raw data
+st.subheader("원본 데이터 미리보기")
+st.write(f"데이터 크기: {spc_df.shape[0]} 행, {spc_df.shape[1]} 열")
+st.dataframe(spc_df.head())
+
+# Cpk Calculation and Display
+st.subheader("품목별 Cpk 분석")
+cpk_results = calculate_cpk(spc_df)
+st.dataframe(cpk_results.style.apply(lambda x: ['background-color: #ffe6e6' if v < 1.0 else ('background-color: #fff2cc' if v < 1.33 else '') for v in x], subset=['cpk']))
+st.markdown("--- :orange[**Cpk 1.0 미만**] :red[**위험**] | :orange[**Cpk 1.0 ~ 1.33 미만**] :yellow[**주의**] | :green[**Cpk 1.33 이상**] :blue[**안정**] --- ")
+
+# Cpk Bar Chart
+st.subheader("품목별 Cpk 비교")
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.bar(cpk_results["product_type"], cpk_results["cpk"], color=plt.cm.Paired(np.arange(len(cpk_results)))) # Use a colormap for varied colors
+ax.axhline(1.33, color="green", linestyle="--", linewidth=1, label="1.33 기준")
+ax.axhline(1.00, color="black", linestyle="--", linewidth=1, label="1.00 기준")
+ax.set_title("품목별 Cpk 비교")
+ax.set_ylabel("Cpk")
+ax.legend()
+plt.tight_layout()
+st.pyplot(fig)
+
